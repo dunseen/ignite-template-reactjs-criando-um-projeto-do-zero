@@ -1,7 +1,10 @@
 import { GetStaticProps } from 'next';
 import Head from 'next/head';
+import Prismic from '@prismicio/client';
 import { FiCalendar, FiUser } from 'react-icons/fi';
 
+import { RichText } from 'prismic-dom';
+import { useEffect, useState } from 'react';
 import { getPrismicClient } from '../services/prismic';
 
 import commonStyles from '../styles/common.module.scss';
@@ -26,7 +29,37 @@ interface HomeProps {
   postsPagination: PostPagination;
 }
 
-export default function Home(): JSX.Element {
+export default function Home({ postsPagination }: HomeProps): JSX.Element {
+  const [posts, setPosts] = useState<Post[]>(postsPagination.results);
+  const [isLoading, setIsLoading] = useState(false);
+
+  function loadMorePosts(): void {
+    setIsLoading(true);
+    fetch(postsPagination.next_page)
+      .then(response => response.json())
+      .then(data => {
+        const result = data.results.map(post => ({
+          uid: post.uid,
+          first_publication_date: new Date(
+            post.first_publication_date
+          ).toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+          }),
+          data: {
+            title: post.data.title,
+            subtitle: post.data.subtitle,
+            author: post.data.author,
+          },
+        }));
+
+        setPosts([...posts, ...result]);
+        setIsLoading(false);
+      })
+      .catch(err => setIsLoading(false));
+  }
+
   return (
     <>
       <Head>
@@ -37,93 +70,67 @@ export default function Home(): JSX.Element {
         <header className={styles.headerContainer}>
           <img src="/images/Logo.svg" alt="logo" />
         </header>
+        {posts.map(post => (
+          <section key={post.uid} className={styles.content}>
+            <h1>{post.data.title}</h1>
+            <p>{post.data.subtitle}</p>
+            <div className={styles.iconContainer}>
+              <div>
+                <FiCalendar color="#BBBBBB" />
+                <span>{post.first_publication_date}</span>
+              </div>
+              <div>
+                <FiUser color="#BBBBBB" />
+                <span>{post.data.author}</span>
+              </div>
+            </div>
+          </section>
+        ))}
 
-        <section className={styles.content}>
-          <h1>Como utilizar Hooks</h1>
-          <p>Pensando em sincronização em vez de ciclos de vida.</p>
-          <div className={styles.iconContainer}>
-            <div>
-              <FiCalendar color="#BBBBBB" />
-              <span>15 Mar 2021</span>
-            </div>
-            <div>
-              <FiUser color="#BBBBBB" />
-              <span>Joseph Oliveira</span>
-            </div>
-          </div>
-        </section>
-
-        <section className={styles.content}>
-          <h1>Criando um app CRA do zero</h1>
-          <p>
-            Tudo sobre como criar a sua primeira aplicação utilizando Create
-            React App.
-          </p>
-          <div className={styles.iconContainer}>
-            <div>
-              <FiCalendar color="#BBBBBB" />
-              <span>19 Abr 2021</span>
-            </div>
-            <div>
-              <FiUser color="#BBBBBB" />
-              <span>Danilo Vieira</span>
-            </div>
-          </div>
-        </section>
-
-        <section className={styles.content}>
-          <h1>Como utilizar Hooks</h1>
-          <p>Pensando em sincronização em vez de ciclos de vida.</p>
-          <div className={styles.iconContainer}>
-            <div>
-              <FiCalendar color="#BBBBBB" />
-              <span>15 Mar 2021</span>
-            </div>
-            <div>
-              <FiUser color="#BBBBBB" />
-              <span>Joseph Oliveira</span>
-            </div>
-          </div>
-        </section>
-
-        <section className={styles.content}>
-          <h1>Como utilizar Hooks</h1>
-          <p>Pensando em sincronização em vez de ciclos de vida.</p>
-          <div className={styles.iconContainer}>
-            <div>
-              <FiCalendar color="#BBBBBB" />
-              <span>15 Mar 2021</span>
-            </div>
-            <div>
-              <FiUser color="#BBBBBB" />
-              <span>Joseph Oliveira</span>
-            </div>
-          </div>
-        </section>
-
-        <section className={styles.content}>
-          <h1>Como utilizar Hooks</h1>
-          <p>Pensando em sincronização em vez de ciclos de vida.</p>
-          <div className={styles.iconContainer}>
-            <div>
-              <FiCalendar color="#BBBBBB" />
-              <span>15 Mar 2021</span>
-            </div>
-            <div>
-              <FiUser color="#BBBBBB" />
-              <span>Joseph Oliveira</span>
-            </div>
-          </div>
-        </section>
-
-        <span className={styles.loadMoreContent}>Carregar mais posts</span>
+        <button
+          id="load-posts"
+          type="button"
+          onClick={loadMorePosts}
+          className={styles.loadMoreContent}
+        >
+          Carregar mais posts
+        </button>
       </main>
     </>
   );
 }
 
-// export const getStaticProps = async () => {
-// const prismic = getPrismicClient();
-// const postsResponse = await prismic.query(TODO);
-// TODO
-// };
+export const getStaticProps: GetStaticProps = async () => {
+  const prismic = getPrismicClient();
+  const postsResponse = await prismic.query(
+    [Prismic.predicates.at('document.type', 'posts')],
+
+    { fetch: ['post.title', 'post.content'], pageSize: 4 }
+  );
+
+  const posts = postsResponse.results.map(post => ({
+    uid: post.uid,
+    first_publication_date: new Date(
+      post.last_publication_date
+    ).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    }),
+    data: {
+      title: post.data.title,
+      subtitle: post.data.subtitle,
+      author: post.data.author,
+    },
+  }));
+
+  const postsPagination = {
+    next_page: postsResponse.next_page,
+    results: posts,
+  };
+
+  return {
+    props: { postsPagination },
+    revalidate: 60 * 60 * 24, // 24hours
+  };
+};
