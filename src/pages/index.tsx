@@ -31,33 +31,48 @@ interface HomeProps {
 
 export default function Home({ postsPagination }: HomeProps): JSX.Element {
   const [posts, setPosts] = useState<Post[]>(postsPagination.results);
+  const [nextPage, setNextPage] = useState(postsPagination.next_page);
+  const [hasNoNextPage, setHasNoNextPage] = useState(false);
+
   const [isLoading, setIsLoading] = useState(false);
 
   function loadMorePosts(): void {
     setIsLoading(true);
-    fetch(postsPagination.next_page)
+    fetch(nextPage)
       .then(response => response.json())
       .then(data => {
-        const result = data.results.map(post => ({
-          uid: post.uid,
-          first_publication_date: new Date(
-            post.first_publication_date
-          ).toLocaleDateString('pt-BR', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-          }),
-          data: {
-            title: post.data.title,
-            subtitle: post.data.subtitle,
-            author: post.data.author,
-          },
-        }));
+        if (!data.next_page) {
+          setHasNoNextPage(true);
+          return;
+        }
 
+        function getPosts(post: Post): Post {
+          return {
+            uid: post.uid,
+            first_publication_date: new Date(
+              post.first_publication_date
+            ).toLocaleDateString('pt-BR', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+            }),
+            data: {
+              title: post.data.title,
+              subtitle: post.data.subtitle,
+              author: post.data.author,
+            },
+          };
+        }
+
+        const result = data.results.map(getPosts);
         setPosts([...posts, ...result]);
+        setNextPage(data.next_page);
         setIsLoading(false);
       })
-      .catch(err => setIsLoading(false));
+      .catch(err => {
+        setIsLoading(false);
+        console.error(err);
+      });
   }
 
   return (
@@ -86,15 +101,16 @@ export default function Home({ postsPagination }: HomeProps): JSX.Element {
             </div>
           </section>
         ))}
-
-        <button
-          id="load-posts"
-          type="button"
-          onClick={loadMorePosts}
-          className={styles.loadMoreContent}
-        >
-          Carregar mais posts
-        </button>
+        {!hasNoNextPage && (
+          <button
+            id="load-posts"
+            type="button"
+            onClick={loadMorePosts}
+            className={styles.loadMoreContent}
+          >
+            Carregar mais posts
+          </button>
+        )}
       </main>
     </>
   );
