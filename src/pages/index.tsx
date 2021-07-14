@@ -1,4 +1,5 @@
 import { GetStaticProps } from 'next';
+import Link from 'next/link';
 import Head from 'next/head';
 import Prismic from '@prismicio/client';
 import { FiCalendar, FiUser } from 'react-icons/fi';
@@ -34,10 +35,7 @@ export default function Home({ postsPagination }: HomeProps): JSX.Element {
   const [nextPage, setNextPage] = useState(postsPagination.next_page);
   const [hasNoNextPage, setHasNoNextPage] = useState(false);
 
-  const [isLoading, setIsLoading] = useState(false);
-
   function loadMorePosts(): void {
-    setIsLoading(true);
     fetch(nextPage)
       .then(response => response.json())
       .then(data => {
@@ -67,10 +65,8 @@ export default function Home({ postsPagination }: HomeProps): JSX.Element {
         const result = data.results.map(getPosts);
         setPosts([...posts, ...result]);
         setNextPage(data.next_page);
-        setIsLoading(false);
       })
       .catch(err => {
-        setIsLoading(false);
         console.error(err);
       });
   }
@@ -82,12 +78,11 @@ export default function Home({ postsPagination }: HomeProps): JSX.Element {
       </Head>
 
       <main className={styles.mainContainer}>
-        <header className={styles.headerContainer}>
-          <img src="/images/Logo.svg" alt="logo" />
-        </header>
         {posts.map(post => (
           <section key={post.uid} className={styles.content}>
-            <h1>{post.data.title}</h1>
+            <Link key={post.uid} href={`/post/${post.uid}`}>
+              <h1>{post.data.title}</h1>
+            </Link>
             <p>{post.data.subtitle}</p>
             <div className={styles.iconContainer}>
               <div>
