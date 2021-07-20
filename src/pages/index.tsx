@@ -6,10 +6,13 @@ import { FiCalendar, FiUser } from 'react-icons/fi';
 
 import { RichText } from 'prismic-dom';
 import { useEffect, useState } from 'react';
+import { format } from 'date-fns';
+import ptBR from 'date-fns/locale/pt-BR';
 import { getPrismicClient } from '../services/prismic';
 
 import commonStyles from '../styles/common.module.scss';
 import styles from './home.module.scss';
+import Header from '../components/Header';
 
 interface Post {
   uid?: string;
@@ -33,27 +36,21 @@ interface HomeProps {
 export default function Home({ postsPagination }: HomeProps): JSX.Element {
   const [posts, setPosts] = useState<Post[]>(postsPagination.results);
   const [nextPage, setNextPage] = useState(postsPagination.next_page);
-  const [hasNoNextPage, setHasNoNextPage] = useState(false);
 
   function loadMorePosts(): void {
     fetch(nextPage)
       .then(response => response.json())
       .then(data => {
-        if (!data.next_page) {
-          setHasNoNextPage(true);
-          return;
-        }
-
         function getPosts(post: Post): Post {
           return {
             uid: post.uid,
-            first_publication_date: new Date(
-              post.first_publication_date
-            ).toLocaleDateString('pt-BR', {
-              day: '2-digit',
-              month: 'short',
-              year: 'numeric',
-            }),
+            first_publication_date: format(
+              new Date(post.first_publication_date),
+              'dd MMM yyyy',
+              {
+                locale: ptBR,
+              }
+            ),
             data: {
               title: post.data.title,
               subtitle: post.data.subtitle,
@@ -76,7 +73,7 @@ export default function Home({ postsPagination }: HomeProps): JSX.Element {
       <Head>
         <title>Home | spacetraveling</title>
       </Head>
-
+      <Header />
       <main className={styles.mainContainer}>
         {posts.map(post => (
           <section key={post.uid} className={styles.content}>
@@ -87,7 +84,15 @@ export default function Home({ postsPagination }: HomeProps): JSX.Element {
             <div className={styles.iconContainer}>
               <div>
                 <FiCalendar color="#BBBBBB" />
-                <span>{post.first_publication_date}</span>
+                <span>
+                  {format(
+                    new Date(post.first_publication_date),
+                    'dd MMM yyyy',
+                    {
+                      locale: ptBR,
+                    }
+                  )}
+                </span>
               </div>
               <div>
                 <FiUser color="#BBBBBB" />
@@ -96,7 +101,7 @@ export default function Home({ postsPagination }: HomeProps): JSX.Element {
             </div>
           </section>
         ))}
-        {!hasNoNextPage && (
+        {nextPage && (
           <button
             id="load-posts"
             type="button"
@@ -121,13 +126,7 @@ export const getStaticProps: GetStaticProps = async () => {
 
   const posts = postsResponse.results.map(post => ({
     uid: post.uid,
-    first_publication_date: new Date(
-      post.last_publication_date
-    ).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    }),
+    first_publication_date: post.first_publication_date,
     data: {
       title: post.data.title,
       subtitle: post.data.subtitle,

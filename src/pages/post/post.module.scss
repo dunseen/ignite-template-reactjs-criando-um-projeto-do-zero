@@ -67,3 +67,24 @@
 
   }
 }
+
+.content {
+  h1 {
+    font-style: normal;
+    font-weight: bold;
+    font-size: 36px;
+    line-height: 140%;
+
+    text-align: justify;
+    margin: 4rem 0;
+  }
+
+  p {
+    font-style: normal;
+    font-weight: normal;
+    font-size: 18px;
+    line-height: 2rem;
+
+    text-align: justify;
+  }
+}
